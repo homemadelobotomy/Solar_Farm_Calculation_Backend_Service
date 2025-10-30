@@ -3,7 +3,7 @@ package handler
 import (
 	"errors"
 	dto "lab/internal/app/DTO"
-	_ "lab/internal/app/ds"
+	"lab/internal/app/ds"
 	"lab/internal/app/role"
 	"lab/internal/app/service"
 	"net/http"
@@ -55,7 +55,7 @@ func (h *Handler) GetSolarPanels(ctx *gin.Context) {
 		startValue, err = strconv.ParseFloat(startValueStr, 64)
 		if err != nil {
 			h.errorHandler(ctx, http.StatusBadRequest,
-				"введено некорректное значение start_value")
+				"введено некорректное значение start_value ")
 		}
 	} else {
 		startValue = 0
@@ -77,8 +77,7 @@ func (h *Handler) GetSolarPanels(ctx *gin.Context) {
 			h.errorHandler(ctx, http.StatusNotFound,
 				"заявки по солнечным панелям с таким id не найден")
 		} else if errors.Is(err, service.ErrNoRecords) {
-			h.errorHandler(ctx, http.StatusNotFound,
-				"по заданным параметрам не найдено солнечных панелей")
+			ctx.JSON(http.StatusOK, []ds.SolarPanel{})
 		} else if errors.Is(err, service.ErrBadRequest) {
 			h.errorHandler(ctx, http.StatusBadRequest,
 				"введено недопсутимое значение мощности для фильтрации")

@@ -16,7 +16,7 @@ import (
 func (h *Handler) RegisterSolarPanelsRequestHandlers(router *gin.Engine) {
 	solarPanelRequestGroups := router.Group("/api/solarpanel-requests")
 	{
-		solarPanelRequestGroups.GET("/info", h.WithAuthCheck(role.User), h.GetSolarPanelsInRequest)
+		solarPanelRequestGroups.GET("/info", h.GetSolarPanelsInRequest)
 		solarPanelRequestGroups.GET("", h.WithAuthCheck(role.Moderator, role.User), h.GetFilteredSolarPanelRequests)
 		solarPanelRequestGroups.GET("/:id", h.WithAuthCheck(role.Moderator, role.User), h.GetOneSolarPanelRequest)
 		solarPanelRequestGroups.PUT("/:id", h.WithAuthCheck(role.User), h.ChangeSolarPanelRequest)
@@ -41,7 +41,10 @@ func (h *Handler) GetSolarPanelsInRequest(ctx *gin.Context) {
 
 	userId, exists := GetUserIdFromContext(ctx)
 	if !exists {
-		h.errorHandler(ctx, http.StatusUnauthorized, "не авторизован")
+		ctx.JSON(http.StatusOK, dto.NumberOfPanelsResponse{
+			RequestId:      0,
+			NumberOfPanels: -1,
+		})
 		return
 	}
 
@@ -51,11 +54,13 @@ func (h *Handler) GetSolarPanelsInRequest(ctx *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusOK, dto.NumberOfPanelsResponse{
 				RequestId:      0,
-				NumberOfPanels: 0,
+				NumberOfPanels: -1,
 			})
 		} else {
-			h.errorHandler(ctx, http.StatusInternalServerError,
-				err.Error())
+			ctx.JSON(http.StatusOK, dto.NumberOfPanelsResponse{
+				RequestId:      0,
+				NumberOfPanels: -1,
+			})
 		}
 		return
 	}
