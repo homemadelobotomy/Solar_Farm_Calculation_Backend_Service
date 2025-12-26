@@ -55,7 +55,7 @@ func (h *Handler) GetSolarPanels(ctx *gin.Context) {
 		startValue, err = strconv.ParseFloat(startValueStr, 64)
 		if err != nil {
 			h.errorHandler(ctx, http.StatusBadRequest,
-				"введено некорректное значение start_value ")
+				"введено некорректное значение start_value")
 		}
 	} else {
 		startValue = 0

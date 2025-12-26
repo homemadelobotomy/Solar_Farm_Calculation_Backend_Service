@@ -599,7 +599,7 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
+                    "201": {
                         "description": "Панель с обновленным изображением",
                         "schema": {
                             "$ref": "#/definitions/lab_internal_app_ds.SolarPanel"
@@ -1675,6 +1675,9 @@ const docTemplate = `{
                 "expires_in": {
                     "$ref": "#/definitions/time.Duration"
                 },
+                "is_moderator": {
+                    "type": "boolean"
+                },
                 "token_type": {
                     "type": "string"
                 }
@@ -1872,11 +1875,39 @@ const docTemplate = `{
                 1000000,
                 1000000000,
                 60000000000,
+                3600000000000,
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
                 3600000000000
             ],
             "x-enum-varnames": [
                 "minDuration",
                 "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour",
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour",
                 "Nanosecond",
                 "Microsecond",
                 "Millisecond",

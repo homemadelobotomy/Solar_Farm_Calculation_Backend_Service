@@ -14,8 +14,8 @@ import (
 )
 
 func (h *Handler) RegisterRequestPanelsHandlers(router *gin.Engine) {
-	router.DELETE("/api/solarpanel-requests/:id/:solarpanelId", h.WithAuthCheck(role.User), h.DeleteSolarPanelFromRequest)
-	router.PUT("/api/solarpanel-requests/:id/:solarpanelId", h.WithAuthCheck(role.User), h.ChangeSolarPanelArea)
+	router.DELETE("/api/solarpanel-requests/:id/:solarpanelId", h.WithAuthCheck(role.User, role.Moderator), h.DeleteSolarPanelFromRequest)
+	router.PUT("/api/solarpanel-requests/:id/:solarpanelId", h.WithAuthCheck(role.User, role.Moderator), h.ChangeSolarPanelArea)
 }
 
 // DeleteSolarPanelFromRequest godoc

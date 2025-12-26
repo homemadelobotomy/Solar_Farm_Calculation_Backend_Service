@@ -1,6 +1,9 @@
 package dto
 
-import "time"
+import (
+	"lab/internal/app/role"
+	"time"
+)
 
 type UserRegistration struct {
 	Login    string `json:"login" binding:"required"`
@@ -25,4 +28,5 @@ type LoginRes struct {
 	ExpiresIn   time.Duration `json:"expires_in"`
 	AccessToken string        `json:"access_token"`
 	TokenType   string        `json:"token_type"`
+	IsModerator role.Role     `json:"is_moderator"`
 }

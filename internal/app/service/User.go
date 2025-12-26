@@ -80,6 +80,7 @@ func (s *Service) Login(user dto.LoginReq, cfg config.JWTConfig) (dto.LoginRes, 
 			ExpiresIn:   time.Hour,
 			AccessToken: strToken,
 			TokenType:   "Bearer",
+			IsModerator: userFromDatabase.IsModerator,
 		}, nil
 
 	}

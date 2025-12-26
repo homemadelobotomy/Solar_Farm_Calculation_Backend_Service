@@ -1,10 +1,14 @@
 package service
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	dto "lab/internal/app/DTO"
 	"lab/internal/app/ds"
 	"lab/internal/app/role"
 	"math"
+	"net/http"
 )
 
 func (s *Service) GetSolarPanelsInRequest(userId uint) (uint, int64, error) {
@@ -57,8 +61,11 @@ func (s *Service) GetOneSolarPanelRequest(requestId uint, userId uint) (dto.OneS
 	if err != nil {
 		return dto.OneSolarPanelRequestResponse{}, err
 	}
-
-	if userId != solarPanelRequest.CreatorId {
+	currentUser, err := s.repository.GetUser(userId)
+	if err != nil {
+		return dto.OneSolarPanelRequestResponse{}, err
+	}
+	if userId != solarPanelRequest.CreatorId && currentUser.IsModerator != role.Moderator {
 		return dto.OneSolarPanelRequestResponse{}, ErrForbidden
 	}
 	return s.ValidateSolarPanelRequestResponse(&solarPanelRequest), nil
@@ -85,6 +92,7 @@ func (s *Service) ValidateSolarPanelRequestResponse(solarPanelRequest *ds.SolarP
 		TotalPower: solarPanelRequest.TotalPower,
 		Insolation: solarPanelRequest.Insolation,
 		Panels:     solarPanelsDTO,
+		Status:     solarPanelRequest.Status,
 	}
 	return response
 }
@@ -124,7 +132,7 @@ func (s *Service) FormateSolarPanelRequest(requestId uint, userId uint) (dto.One
 	solarpanels := solarPanelRequest.Panels
 
 	for _, panel := range solarpanels {
-		if panel.Area <= 0 || math.IsNaN(panel.Area) {
+		if panel.Area <= 0.0 || math.IsNaN(panel.Area) {
 			return dto.OneSolarPanelRequestResponse{}, ErrBadRequest
 		}
 	}
@@ -156,25 +164,65 @@ func (s *Service) ModeratorAction(requestId uint, action string, moderatorId uin
 	if action != "завершен" && action != "отклонен" {
 		return dto.OneSolarPanelRequestResponse{}, ErrBadRequest
 	}
+
 	solarPanelRequest, err := s.repository.GetOneSolarPanelRequest(requestId, "сформирован")
 	if err != nil {
 		return dto.OneSolarPanelRequestResponse{}, err
 	}
-	panels := solarPanelRequest.Panels
-	insolation := solarPanelRequest.Insolation
-	totalPower := 0.0
+
 	if action == "завершен" {
-		totalPower = CalculateTotalPower(panels, insolation)
+		err = s.SendToCalculationService(requestId, solarPanelRequest.Panels, solarPanelRequest.Insolation)
+		if err != nil {
+			return dto.OneSolarPanelRequestResponse{}, err
+		}
 	}
-	err = s.repository.ModeratorAction(requestId, action, totalPower, moderatorId)
+
+	err = s.repository.ModeratorAction(requestId, action, 0.0, moderatorId)
 	if err != nil {
 		return dto.OneSolarPanelRequestResponse{}, err
 	}
+
 	solarPanelRequest, err = s.repository.GetOneSolarPanelRequest(requestId, action)
 	if err != nil {
 		return dto.OneSolarPanelRequestResponse{}, err
 	}
 	return s.ValidateSolarPanelRequestResponse(&solarPanelRequest), nil
+}
+
+func (s *Service) SendToCalculationService(requestId uint, panels []ds.RequestPanels, insolation float64) error {
+	var panelsDTO []dto.RequestPanelForCalculation
+
+	for _, p := range panels {
+		panelsDTO = append(panelsDTO, dto.RequestPanelForCalculation{
+			Area:   p.Area,
+			Power:  float64(p.SolarPanel.Power),
+			Height: p.SolarPanel.Height,
+			Width:  p.SolarPanel.Width,
+		})
+	}
+
+	payload := map[string]interface{}{
+		"request_id": requestId,
+		"panels":     panelsDTO,
+		"insolation": insolation,
+	}
+
+	jsonData, _ := json.Marshal(payload)
+	resp, err := http.Post("http://localhost:8002/calculate/", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("django service returned status: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func (s *Service) UpdateCalculationResult(requestId uint, totalPower float64) error {
+	return s.repository.UpdateTotalPower(requestId, totalPower)
 }
 
 func (s *Service) DeleteSolarPanelRequest(requestId uint, userId uint) error {

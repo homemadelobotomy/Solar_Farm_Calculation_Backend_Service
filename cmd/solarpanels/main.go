@@ -12,13 +12,14 @@ import (
 	"lab/internal/pkg"
 	"lab/internal/redis"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	_ "lab/docs" // импортируйте сгенерированные docs
+	_ "lab/docs"
 )
 
 // @title Solar Panels Power Calculator API
@@ -42,7 +43,28 @@ import (
 // @description Type "Bearer" followed by a space and JWT token.
 func main() {
 	router := gin.Default()
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.Use(
+		cors.New(cors.Config{AllowOrigins: []string{
+			"http://localhost:3000",
+			"http://localhost:8001",
+			"*",
+		},
+			AllowMethods: []string{
+				"GET", "POST", "PUT", "DELETE", "OPTIONS",
+			},
+			AllowHeaders: []string{
+				"Origin", "Content-Type", "Accept", "Authorization",
+			},
+			ExposeHeaders: []string{
+				"Content-Length",
+			},
+			AllowCredentials: true,
+		}),
+	)
+	router.GET("/swagger/", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET("/swagger/json", func(ctx *gin.Context) {
+		ctx.File("docs/swagger.json")
+	})
 	conf, err := config.NewConfig()
 	if err != nil {
 		logrus.Fatalf("error loading config: %v", err)

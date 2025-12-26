@@ -16,13 +16,14 @@ import (
 func (h *Handler) RegisterSolarPanelsRequestHandlers(router *gin.Engine) {
 	solarPanelRequestGroups := router.Group("/api/solarpanel-requests")
 	{
-		solarPanelRequestGroups.GET("/info", h.GetSolarPanelsInRequest)
+		solarPanelRequestGroups.GET("/info", h.WithOptionalAuth(), h.GetSolarPanelsInRequest)
 		solarPanelRequestGroups.GET("", h.WithAuthCheck(role.Moderator, role.User), h.GetFilteredSolarPanelRequests)
 		solarPanelRequestGroups.GET("/:id", h.WithAuthCheck(role.Moderator, role.User), h.GetOneSolarPanelRequest)
-		solarPanelRequestGroups.PUT("/:id", h.WithAuthCheck(role.User), h.ChangeSolarPanelRequest)
-		solarPanelRequestGroups.PUT("/:id/formate", h.WithAuthCheck(role.User), h.FormateSolarPanelRequest)
+		solarPanelRequestGroups.PUT("/:id", h.WithAuthCheck(role.User, role.Moderator), h.ChangeSolarPanelRequest)
+		solarPanelRequestGroups.PUT("/:id/formate", h.WithAuthCheck(role.User, role.Moderator), h.FormateSolarPanelRequest)
 		solarPanelRequestGroups.PUT("/:id/moderate", h.WithAuthCheck(role.Moderator), h.ModeratorAction)
-		solarPanelRequestGroups.DELETE("/:id", h.WithAuthCheck(role.User), h.DeleteSolarPanelRequest)
+		solarPanelRequestGroups.PUT("/:id/update-total-power", h.UpdateCalculationResult)
+		solarPanelRequestGroups.DELETE("/:id", h.WithAuthCheck(role.User, role.Moderator), h.DeleteSolarPanelRequest)
 	}
 }
 
@@ -43,7 +44,7 @@ func (h *Handler) GetSolarPanelsInRequest(ctx *gin.Context) {
 	if !exists {
 		ctx.JSON(http.StatusOK, dto.NumberOfPanelsResponse{
 			RequestId:      0,
-			NumberOfPanels: -1,
+			NumberOfPanels: 0,
 		})
 		return
 	}
@@ -54,12 +55,12 @@ func (h *Handler) GetSolarPanelsInRequest(ctx *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			ctx.JSON(http.StatusOK, dto.NumberOfPanelsResponse{
 				RequestId:      0,
-				NumberOfPanels: -1,
+				NumberOfPanels: 0,
 			})
 		} else {
 			ctx.JSON(http.StatusOK, dto.NumberOfPanelsResponse{
 				RequestId:      0,
-				NumberOfPanels: -1,
+				NumberOfPanels: 0,
 			})
 		}
 		return
@@ -141,10 +142,9 @@ func (h *Handler) GetFilteredSolarPanelRequests(ctx *gin.Context) {
 	response, err := h.Service.GetFilteredSolarPanelRequests(userId, filter, userRole)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, service.ErrNoRecords) {
-			h.errorHandler(ctx, http.StatusNotFound,
-				"для данного пользователя не найдено ни одной заявки по солнечным панелям")
+			ctx.JSON(http.StatusOK, []dto.SolarPanelsRequestsResponse{})
 		} else {
-			h.errorHandler(ctx, http.StatusInternalServerError, err.Error())
+			ctx.JSON(http.StatusOK, []dto.SolarPanelsRequestsResponse{})
 		}
 		return
 	}
@@ -394,4 +394,32 @@ func (h *Handler) DeleteSolarPanelRequest(ctx *gin.Context) {
 		"status":  "200 OK",
 		"message": "заявка по солнечным панелям успешно удалена",
 	})
+}
+
+func (h *Handler) UpdateCalculationResult(ctx *gin.Context) {
+	const SERVICE_TOKEN = "12345678"
+
+	requestId, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, "некорректный id заявки")
+		return
+	}
+
+	var updateData dto.CalculationResultUpdate
+	if err := ctx.BindJSON(&updateData); err != nil {
+		h.errorHandler(ctx, http.StatusBadRequest, "неверный формат данных")
+		return
+	}
+	if updateData.Token != SERVICE_TOKEN {
+		h.errorHandler(ctx, http.StatusUnauthorized, "неверный токен сервиса")
+		return
+	}
+
+	err = h.Service.UpdateCalculationResult(uint(requestId), updateData.TotalPower)
+	if err != nil {
+		h.errorHandler(ctx, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "результат обновлен"})
 }

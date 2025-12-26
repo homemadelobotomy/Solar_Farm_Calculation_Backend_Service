@@ -22,6 +22,7 @@ type OneSolarPanelRequestResponse struct {
 	TotalPower float64                         `json:"total_power"`
 	Insolation float64                         `json:"insolation"`
 	Panels     []SolarPanelFromRequestResponse `json:"solarpanels"`
+	Status     string                          `json:"status"`
 }
 
 type ChangeSolarPanelRequest struct {
@@ -30,4 +31,16 @@ type ChangeSolarPanelRequest struct {
 
 type ModeratorAction struct {
 	Action string `json:"action" binding:"required"`
+}
+
+type CalculationResultUpdate struct {
+	Token      string  `json:"token" binding:"required"`
+	TotalPower float64 `json:"total_power" binding:"required"`
+}
+
+type RequestPanelForCalculation struct {
+	Area   float64 `json:"area" binding:"required"`
+	Power  float64 `json:"power" binding:"required"`
+	Height int     `json:"height" binding:"required"`
+	Width  int     `json:"width" binding:"required"`
 }

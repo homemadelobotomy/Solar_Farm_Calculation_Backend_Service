@@ -35,7 +35,7 @@ func (h *Handler) WithAuthCheck(roles ...role.Role) func(ctx *gin.Context) {
 
 			return
 		}
-		if !errors.Is(err, redis.Nil) { // значит что это не ошибка отсуствия - внутренняя ошибка
+		if !errors.Is(err, redis.Nil) {
 			ctx.AbortWithError(http.StatusInternalServerError, err)
 
 			return
@@ -90,4 +90,44 @@ func GetUserRoleFromContext(ctx *gin.Context) (role.Role, bool) {
 	}
 	role := userRole.(role.Role)
 	return role, true
+}
+
+func (h *Handler) WithOptionalAuth() func(ctx *gin.Context) {
+	return func(ctx *gin.Context) {
+		jwtStr := ctx.GetHeader("Authorization")
+
+		if !strings.HasPrefix(jwtStr, jwtPrefix) {
+			ctx.Next()
+			return
+		}
+
+		jwtStr = jwtStr[len(jwtPrefix):]
+
+		err := h.Redis.CheckJWTInBlacklist(ctx.Request.Context(), jwtStr)
+		if err == nil {
+			ctx.Next()
+			return
+		}
+		if !errors.Is(err, redis.Nil) {
+			ctx.Next()
+			return
+		}
+		token, err := jwt.ParseWithClaims(jwtStr, &ds.JWTClaims{}, func(t *jwt.Token) (interface{}, error) {
+			return []byte(h.Config.JWT.Token), nil
+		})
+		if err != nil {
+			ctx.Next()
+			return
+		}
+
+		claims, ok := token.Claims.(*ds.JWTClaims)
+		if !ok {
+			ctx.Next()
+			return
+		}
+		ctx.Set(userIdKey, claims.UserId)
+		ctx.Set(userRoleKey, claims.IsModerator)
+
+		ctx.Next()
+	}
 }

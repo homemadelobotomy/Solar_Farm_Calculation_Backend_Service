@@ -4,6 +4,8 @@ import (
 	dto "lab/internal/app/DTO"
 	"lab/internal/app/ds"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 func (r *Repository) GetSolarPanelsInRequest(userId uint) (uint, int64, error) {
@@ -38,7 +40,10 @@ func (r *Repository) GetFilteredSolarPanelRequests(userId uint, filter dto.Solar
 	if !filter.End_date.IsZero() {
 		db = db.Where("formated_at <= ?", filter.End_date)
 	}
-	err := db.Preload("Creator").Preload("Moderator").Find(&solarPanelRequests).Error
+	err := db.Order("formated_at DESC").
+		Preload("Creator").
+		Preload("Moderator").
+		Find(&solarPanelRequests).Error
 	if err != nil {
 		return []ds.SolarPanelRequest{}, err
 	}
@@ -58,7 +63,11 @@ func (r *Repository) GetAllFilteredSolarPanelRequests(filter dto.SolarPanleReque
 	if !filter.End_date.IsZero() {
 		db = db.Where("formated_at <= ?", filter.End_date)
 	}
-	err := db.Preload("Creator").Preload("Moderator").Find(&solarPanelRequests).Error
+	err := db.
+		Order("formated_at DESC").
+		Preload("Creator").
+		Preload("Moderator").
+		Find(&solarPanelRequests).Error
 	if err != nil {
 		return []ds.SolarPanelRequest{}, err
 	}
@@ -66,16 +75,27 @@ func (r *Repository) GetAllFilteredSolarPanelRequests(filter dto.SolarPanleReque
 }
 
 func (r *Repository) GetOneSolarPanelRequest(requestId uint, status string) (ds.SolarPanelRequest, error) {
-	//TODO Вернуть черновик и его услуги
 	var solarPanelRequest ds.SolarPanelRequest
-	err := r.db.Where("id = ? AND status = ?", requestId, status).
+	err := r.db.Where("id = ? AND status <> 'удален' ", requestId).
 		Preload("Panels.SolarPanel").
+		Preload("Panels", func(db *gorm.DB) *gorm.DB {
+			return db.Order("solar_panel_id ASC") // Сортировка по ID панели
+		}).
 		First(&solarPanelRequest).Error
 	if err != nil {
 		return ds.SolarPanelRequest{}, err
 	}
 	return solarPanelRequest, nil
 
+}
+func (r *Repository) UpdateTotalPower(requestId uint, totalPower float64) error {
+	err := r.db.Model(&ds.SolarPanelRequest{}).
+		Where("id = ? AND status = 'завершен'", requestId).
+		Update("total_power", totalPower).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *Repository) ChangeSolarPanelRequest(requestId uint, insolation float64) error {

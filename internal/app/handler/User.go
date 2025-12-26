@@ -20,10 +20,10 @@ import (
 
 func (h *Handler) RegisterUserHandlers(router *gin.Engine) {
 	router.POST("/api/user/registration", h.Registration)
-	router.GET("/api/user/:id", h.WithAuthCheck(role.User), h.GetUserData)
-	router.PUT("/api/user", h.WithAuthCheck(role.User), h.ChangeUserData)
+	router.GET("/api/user/:id", h.WithAuthCheck(role.User, role.Moderator), h.GetUserData)
+	router.PUT("/api/user", h.WithAuthCheck(role.User, role.Moderator), h.ChangeUserData)
 	router.POST("/api/login", h.Login)
-	router.POST("/api/logout", h.WithAuthCheck(role.User), h.Logout)
+	router.POST("/api/logout", h.WithAuthCheck(role.User, role.Moderator), h.Logout)
 }
 
 // Registration godoc

@@ -5,6 +5,7 @@ import (
 	"lab/internal/app/ds"
 	"lab/internal/app/repository"
 	"log"
+	"math"
 	"net/url"
 	"os"
 	"path"
@@ -58,6 +59,6 @@ func CalculateTotalPower(panels []ds.RequestPanels, insolation float64) float64 
 	for _, panel := range panels {
 		power += float64(panel.SolarPanel.Power) * panel.Area / (float64(panel.SolarPanel.Width*panel.SolarPanel.Height) / 1000000)
 	}
-
-	return power * insolation / 1000
+	v := power * insolation / 1000
+	return math.Round(v*100) / 100
 }

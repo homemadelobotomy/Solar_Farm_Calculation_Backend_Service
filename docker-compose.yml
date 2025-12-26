@@ -40,7 +40,7 @@ services:
     image: redis:6.2-alpine
     restart: always
     ports:
-      - '6380:6379'
+      - '6381:6379'
     command: redis-server --save 20 1 --loglevel warning --requirepass password
     volumes:
       - redis-data:/data
